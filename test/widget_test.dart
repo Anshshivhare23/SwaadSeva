@@ -20,7 +20,9 @@ void main() {
     // Wait for the splash screen timer and animations to complete
     await tester.pumpAndSettle(const Duration(seconds: 4));
     
-    // Verify navigation to user type selection screen
+    // Verify navigation to service selection screen
     expect(find.textContaining('Welcome to SwaadSeva'), findsOneWidget);
+    expect(find.text('HOME-COOKED TIFFIN DELIVERY'), findsOneWidget);
+    expect(find.text('COOK-ON-CALL'), findsOneWidget);
   });
 }

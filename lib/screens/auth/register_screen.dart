@@ -1,20 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../utils/constants.dart';
+import '../../utils/validation_utils.dart';
+import '../../services/firebase_auth_service.dart';
+import '../../widgets/custom_button.dart';
+import '../../widgets/custom_text_field.dart';
+import 'login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   final String userType;
+  final String serviceType;
   
   const RegisterScreen({
     super.key,
     required this.userType,
+    required this.serviceType,
   });
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends State<RegisterScreen> 
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -22,12 +32,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   
-  bool _isLoading = false;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+  
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _agreeToTerms = false;
 
   @override
+  void initState() {
+    super.initState();
+    
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+    
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+    ));
+    
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: const Interval(0.2, 1.0, curve: Curves.easeOutBack),
+    ));
+    
+    _animationController.forward();
+  }
+  
+  @override
   void dispose() {
+    _animationController.dispose();
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -66,6 +109,83 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  IconData get _userTypeIcon {
+    switch (widget.userType) {
+      case AppConstants.userTypeCustomer:
+        return Icons.person_add;
+      case AppConstants.userTypeCook:
+        return Icons.restaurant_menu;
+      case AppConstants.userTypeDelivery:
+        return Icons.delivery_dining;
+      case AppConstants.userTypeAdmin:
+        return Icons.admin_panel_settings;
+      default:
+        return Icons.person_add;
+    }
+  }
+
+  Future<void> _register() async {
+    if (_formKey.currentState!.validate()) {
+      if (!_agreeToTerms) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Please agree to the Terms and Conditions',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: AppConstants.warningColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
+      HapticFeedback.lightImpact();
+      
+      final authService = Provider.of<FirebaseAuthService>(context, listen: false);
+      final success = await authService.register(
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        phone: ValidationUtils.formatPhoneNumber(_phoneController.text.trim()),
+        userType: widget.userType,
+        serviceType: widget.serviceType,
+      );
+
+      if (success && mounted) {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Account created successfully! Welcome to SwaadSeva!',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: AppConstants.successColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+        // Navigate to correct dashboard based on user type
+        final dashboardRoute = widget.userType == AppConstants.userTypeCook 
+            ? '/cook-dashboard' 
+            : '/customer-dashboard';
+        
+        Navigator.of(context).pushReplacementNamed(dashboardRoute);
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              authService.errorMessage ?? 'Registration failed',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: AppConstants.errorColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -80,305 +200,350 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Text(
-          'Create Account',
-          style: GoogleFonts.poppins(
-            color: AppConstants.textPrimary,
-            fontWeight: FontWeight.w600,
-          ),
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
         ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppConstants.largePadding),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Center(
-                  child: Column(
-                    children: [
-                      Text(
-                        'Join as $_userTypeDisplayName',
-                        style: GoogleFonts.poppins(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: AppConstants.textPrimary,
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 8),
-                      
-                      Text(
-                        'Fill in your details to get started',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          color: AppConstants.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 30),
-                
-                // Form Fields
-                TextFormField(
-                  controller: _nameController,
-                  decoration: InputDecoration(
-                    labelText: AppStrings.name,
-                    prefixIcon: Icon(
-                      Icons.person_outline,
-                      color: _userTypeColor,
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your name';
-                    }
-                    return null;
-                  },
-                ),
-                
-                const SizedBox(height: 20),
-                
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: AppStrings.email,
-                    prefixIcon: Icon(
-                      Icons.email_outlined,
-                      color: _userTypeColor,
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your email';
-                    }
-                    if (!value.contains('@')) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
-                ),
-                
-                const SizedBox(height: 20),
-                
-                TextFormField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    labelText: AppStrings.phone,
-                    prefixIcon: Icon(
-                      Icons.phone_outlined,
-                      color: _userTypeColor,
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your phone number';
-                    }
-                    if (value.length < 10) {
-                      return 'Please enter a valid phone number';
-                    }
-                    return null;
-                  },
-                ),
-                
-                const SizedBox(height: 20),
-                
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: AppStrings.password,
-                    prefixIcon: Icon(
-                      Icons.lock_outline,
-                      color: _userTypeColor,
-                    ),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword 
-                            ? Icons.visibility_off 
-                            : Icons.visibility,
-                        color: _userTypeColor,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
-                      },
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your password';
-                    }
-                    if (value.length < 6) {
-                      return 'Password must be at least 6 characters';
-                    }
-                    return null;
-                  },
-                ),
-                
-                const SizedBox(height: 20),
-                
-                TextFormField(
-                  controller: _confirmPasswordController,
-                  obscureText: _obscureConfirmPassword,
-                  decoration: InputDecoration(
-                    labelText: AppStrings.confirmPassword,
-                    prefixIcon: Icon(
-                      Icons.lock_outline,
-                      color: _userTypeColor,
-                    ),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureConfirmPassword 
-                            ? Icons.visibility_off 
-                            : Icons.visibility,
-                        color: _userTypeColor,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _obscureConfirmPassword = !_obscureConfirmPassword;
-                        });
-                      },
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please confirm your password';
-                    }
-                    if (value != _passwordController.text) {
-                      return 'Passwords do not match';
-                    }
-                    return null;
-                  },
-                ),
-                
-                const SizedBox(height: 30),
-                
-                // Register Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _userTypeColor,
-                    ),
-                    onPressed: _isLoading ? null : _handleRegister,
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  Center(
+                    child: Column(
+                      children: [
+                        // User Type Icon
+                        Hero(
+                          tag: 'user_type_register_${widget.userType}',
+                          child: Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: _userTypeColor.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: _userTypeColor.withValues(alpha: 0.3),
+                                width: 2,
                               ),
                             ),
-                          )
-                        : Text(
-                            AppStrings.register,
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                            child: Icon(
+                              _userTypeIcon,
+                              size: 40,
+                              color: _userTypeColor,
                             ),
                           ),
-                  ),
-                ),
-                
-                const SizedBox(height: 30),
-                
-                // Login Link
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      "Already have an account? ",
-                      style: GoogleFonts.poppins(
-                        color: AppConstants.textSecondary,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: Text(
-                        AppStrings.login,
-                        style: GoogleFonts.poppins(
-                          color: _userTypeColor,
-                          fontWeight: FontWeight.w600,
                         ),
-                      ),
+                        
+                        const SizedBox(height: 24),
+                        
+                        Text(
+                          'Create Account',
+                          style: GoogleFonts.poppins(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: AppConstants.textPrimary,
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 8),
+                        
+                        Text(
+                          'Join as $_userTypeDisplayName',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            color: AppConstants.textSecondary,
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 8),
+                        
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _userTypeColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: _userTypeColor.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Text(
+                            widget.serviceType.replaceAll('_', ' ').toUpperCase(),
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: _userTypeColor,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                  
+                  const SizedBox(height: 40),
+                  
+                  // Registration Form
+                  Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        // Name Field
+                        CustomTextField(
+                          label: 'Full Name',
+                          hint: 'Enter your full name',
+                          controller: _nameController,
+                          validator: ValidationUtils.validateName,
+                          borderColor: _userTypeColor,
+                          prefixIcon: Icon(
+                            Icons.person_outline,
+                            color: _userTypeColor,
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 20),
+                        
+                        // Email Field
+                        CustomTextField(
+                          label: 'Email Address',
+                          hint: 'Enter your email',
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          validator: ValidationUtils.validateEmail,
+                          borderColor: _userTypeColor,
+                          prefixIcon: Icon(
+                            Icons.email_outlined,
+                            color: _userTypeColor,
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 20),
+                        
+                        // Phone Field
+                        CustomTextField(
+                          label: 'Phone Number',
+                          hint: 'Enter your 10-digit phone number',
+                          controller: _phoneController,
+                          keyboardType: TextInputType.phone,
+                          validator: ValidationUtils.validatePhone,
+                          borderColor: _userTypeColor,
+                          maxLength: 10,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          prefixIcon: Icon(
+                            Icons.phone_outlined,
+                            color: _userTypeColor,
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 20),
+                        
+                        // Password Field
+                        CustomTextField(
+                          label: 'Password',
+                          hint: 'Create a strong password',
+                          controller: _passwordController,
+                          obscureText: _obscurePassword,
+                          validator: ValidationUtils.validatePassword,
+                          borderColor: _userTypeColor,
+                          prefixIcon: Icon(
+                            Icons.lock_outline,
+                            color: _userTypeColor,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword 
+                                  ? Icons.visibility_off 
+                                  : Icons.visibility,
+                              color: _userTypeColor,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 20),
+                        
+                        // Confirm Password Field
+                        CustomTextField(
+                          label: 'Confirm Password',
+                          hint: 'Re-enter your password',
+                          controller: _confirmPasswordController,
+                          obscureText: _obscureConfirmPassword,
+                          validator: (value) => ValidationUtils.validateConfirmPassword(
+                            value, 
+                            _passwordController.text,
+                          ),
+                          borderColor: _userTypeColor,
+                          prefixIcon: Icon(
+                            Icons.lock_outline,
+                            color: _userTypeColor,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscureConfirmPassword 
+                                  ? Icons.visibility_off 
+                                  : Icons.visibility,
+                              color: _userTypeColor,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscureConfirmPassword = !_obscureConfirmPassword;
+                              });
+                            },
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 24),
+                        
+                        // Terms and Conditions
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Checkbox(
+                              value: _agreeToTerms,
+                              onChanged: (value) {
+                                setState(() {
+                                  _agreeToTerms = value ?? false;
+                                });
+                              },
+                              activeColor: _userTypeColor,
+                            ),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: RichText(
+                                  text: TextSpan(
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      color: AppConstants.textSecondary,
+                                    ),
+                                    children: [
+                                      const TextSpan(text: 'I agree to the '),
+                                      TextSpan(
+                                        text: 'Terms and Conditions',
+                                        style: GoogleFonts.poppins(
+                                          color: _userTypeColor,
+                                          fontWeight: FontWeight.w600,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                      const TextSpan(text: ' and '),
+                                      TextSpan(
+                                        text: 'Privacy Policy',
+                                        style: GoogleFonts.poppins(
+                                          color: _userTypeColor,
+                                          fontWeight: FontWeight.w600,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        
+                        const SizedBox(height: 32),
+                        
+                        // Register Button
+                        Consumer<FirebaseAuthService>(
+                          builder: (context, authService, child) {
+                            return CustomButton(
+                              text: 'Create Account',
+                              onPressed: _register,
+                              isLoading: authService.isLoading,
+                              color: _userTypeColor,
+                              icon: Icons.person_add,
+                            );
+                          },
+                        ),
+                        
+                        const SizedBox(height: 24),
+                        
+                        // Divider
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Divider(
+                                color: AppConstants.textSecondary.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Text(
+                                'OR',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: AppConstants.textSecondary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Divider(
+                                color: AppConstants.textSecondary.withValues(alpha: 0.3),
+                              ),
+                            ),
+                          ],
+                        ),
+                        
+                        const SizedBox(height: 24),
+                        
+                        // Login Button
+                        CustomButton(
+                          text: 'Already Have Account? Login',
+                          onPressed: () {
+                            Navigator.of(context).pushReplacement(
+                              MaterialPageRoute(
+                                builder: (context) => LoginScreen(
+                                  userType: widget.userType,
+                                  serviceType: widget.serviceType,
+                                ),
+                              ),
+                            );
+                          },
+                          isOutlined: true,
+                          color: _userTypeColor,
+                          icon: Icons.login,
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 40),
+                  
+                  // Footer
+                  Center(
+                    child: Text(
+                      'Demo: Registration will create a test account',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: AppConstants.textSecondary,
+                        fontStyle: FontStyle.italic,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
-  }
-
-  void _handleRegister() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
-      
-      try {
-        // TODO: Implement actual registration logic with Firebase
-        await Future.delayed(const Duration(seconds: 2)); // Simulate API call
-        
-        // For now, just show success message
-        if (mounted) {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Text(
-                'Coming Soon!',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-              ),
-              content: Text(
-                'Registration will be implemented in the next steps. For now, we\'re building the UI structure.',
-                style: GoogleFonts.poppins(),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).pop(); // Go back to login
-                  },
-                  child: Text(
-                    'OK',
-                    style: GoogleFonts.poppins(
-                      color: _userTypeColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Registration failed: ${e.toString()}'),
-              backgroundColor: AppConstants.errorColor,
-            ),
-          );
-        }
-      } finally {
-        if (mounted) {
-          setState(() => _isLoading = false);
-        }
-      }
-    }
   }
 }

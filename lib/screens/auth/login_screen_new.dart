@@ -4,11 +4,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../utils/constants.dart';
 import '../../utils/validation_utils.dart';
-import '../../services/firebase_auth_service.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
+import '../home/dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final String userType;
@@ -121,20 +122,21 @@ class _LoginScreenState extends State<LoginScreen>
     if (_formKey.currentState!.validate()) {
       HapticFeedback.lightImpact();
       
-      final authService = Provider.of<FirebaseAuthService>(context, listen: false);
+      final authService = Provider.of<AuthService>(context, listen: false);
       final success = await authService.login(
         email: _emailController.text.trim(),
         password: _passwordController.text,
-        expectedUserType: widget.userType, // Pass the expected user type
+        userType: widget.userType,
+        serviceType: widget.serviceType,
       );
 
       if (success && mounted) {
-        // Navigate to correct dashboard based on user type
-        final dashboardRoute = widget.userType == AppConstants.userTypeCook 
-            ? '/cook-dashboard' 
-            : '/customer-dashboard';
-        
-        Navigator.of(context).pushReplacementNamed(dashboardRoute);
+        // Navigate to dashboard
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const DashboardScreen(),
+          ),
+        );
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -338,7 +340,7 @@ class _LoginScreenState extends State<LoginScreen>
                         const SizedBox(height: 32),
                         
                         // Login Button
-                        Consumer<FirebaseAuthService>(
+                        Consumer<AuthService>(
                           builder: (context, authService, child) {
                             return CustomButton(
                               text: 'Login',
