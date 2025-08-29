@@ -4,7 +4,12 @@ import '../../utils/constants.dart';
 import 'login_screen.dart';
 
 class UserTypeSelectionScreen extends StatefulWidget {
-  const UserTypeSelectionScreen({super.key});
+  final String serviceType;
+  
+  const UserTypeSelectionScreen({
+    super.key,
+    required this.serviceType,
+  });
 
   @override
   State<UserTypeSelectionScreen> createState() => _UserTypeSelectionScreenState();
@@ -16,40 +21,73 @@ class _UserTypeSelectionScreenState extends State<UserTypeSelectionScreen>
   late List<Animation<Offset>> _slideAnimations;
   late Animation<double> _fadeAnimation;
 
-  final List<UserTypeOption> userTypes = [
-    UserTypeOption(
-      type: AppConstants.userTypeCustomer,
-      title: AppStrings.customer,
-      subtitle: 'Order delicious homemade food',
-      icon: Icons.person,
-      color: AppConstants.primaryColor,
-      description: 'Browse nearby home cooks, order fresh meals, and enjoy ghar ka khana delivered to your doorstep.',
-    ),
-    UserTypeOption(
-      type: AppConstants.userTypeCook,
-      title: AppStrings.homeCook,
-      subtitle: 'Share your cooking skills',
-      icon: Icons.restaurant_menu,
-      color: AppConstants.secondaryColor,
-      description: 'Cook from home, list your daily menu, and earn money by serving delicious homemade meals.',
-    ),
-    UserTypeOption(
-      type: AppConstants.userTypeDelivery,
-      title: AppStrings.deliveryBoy,
-      subtitle: 'Deliver food and earn',
-      icon: Icons.delivery_dining,
-      color: AppConstants.accentColor,
-      description: 'Join our delivery network, pick up orders from home cooks, and deliver to hungry customers.',
-    ),
-    UserTypeOption(
-      type: AppConstants.userTypeAdmin,
-      title: AppStrings.admin,
-      subtitle: 'Manage the platform',
-      icon: Icons.admin_panel_settings,
-      color: Colors.purple,
-      description: 'Admin access to manage users, monitor operations, and maintain platform quality.',
-    ),
-  ];
+  List<UserTypeOption> get userTypes {
+    if (widget.serviceType == 'tiffin_service') {
+      // For Tiffin Delivery Service
+      return [
+        UserTypeOption(
+          type: AppConstants.userTypeCustomer,
+          title: AppStrings.customer,
+          subtitle: 'Order tiffins from home cooks',
+          icon: Icons.person,
+          color: AppConstants.primaryColor,
+          description: 'Browse nearby home cooks, order fresh tiffins, and enjoy ghar ka khana delivered to your doorstep.',
+        ),
+        UserTypeOption(
+          type: AppConstants.userTypeCook,
+          title: AppStrings.homeCook,
+          subtitle: 'Prepare and deliver tiffins',
+          icon: Icons.restaurant_menu,
+          color: AppConstants.secondaryColor,
+          description: 'Cook from home, list your daily tiffin menu, and earn money by serving delicious homemade meals.',
+        ),
+        UserTypeOption(
+          type: AppConstants.userTypeDelivery,
+          title: AppStrings.deliveryBoy,
+          subtitle: 'Deliver tiffins and earn',
+          icon: Icons.delivery_dining,
+          color: AppConstants.accentColor,
+          description: 'Join our delivery network, pick up tiffins from home cooks, and deliver to hungry customers.',
+        ),
+        UserTypeOption(
+          type: AppConstants.userTypeAdmin,
+          title: AppStrings.admin,
+          subtitle: 'Manage the platform',
+          icon: Icons.admin_panel_settings,
+          color: Colors.purple,
+          description: 'Admin access to manage users, monitor operations, and maintain platform quality.',
+        ),
+      ];
+    } else {
+      // For Cook-on-Call Service
+      return [
+        UserTypeOption(
+          type: AppConstants.userTypeCustomer,
+          title: AppStrings.customer,
+          subtitle: 'Book cooks for your location',
+          icon: Icons.person,
+          color: AppConstants.primaryColor,
+          description: 'Find skilled cooks, book them for your events or daily cooking needs at your location.',
+        ),
+        UserTypeOption(
+          type: AppConstants.userTypeCook,
+          title: AppStrings.homeCook,
+          subtitle: 'Provide cooking services',
+          icon: Icons.person_pin_circle,
+          color: AppConstants.secondaryColor,
+          description: 'Offer your cooking services, travel to customer locations, and earn by preparing fresh meals.',
+        ),
+        UserTypeOption(
+          type: AppConstants.userTypeAdmin,
+          title: AppStrings.admin,
+          subtitle: 'Manage the platform',
+          icon: Icons.admin_panel_settings,
+          color: Colors.purple,
+          description: 'Admin access to manage users, monitor operations, and maintain platform quality.',
+        ),
+      ];
+    }
+  }
 
   @override
   void initState() {
@@ -151,7 +189,9 @@ class _UserTypeSelectionScreenState extends State<UserTypeSelectionScreen>
                     const SizedBox(height: 8),
                     
                     Text(
-                      'Choose how you want to join our community',
+                      widget.serviceType == 'tiffin_service' 
+                        ? 'Choose your role for Tiffin Delivery'
+                        : 'Choose your role for Cook-on-Call',
                       style: GoogleFonts.poppins(
                         fontSize: 16,
                         color: AppConstants.textSecondary,
@@ -191,7 +231,10 @@ class _UserTypeSelectionScreenState extends State<UserTypeSelectionScreen>
   void _selectUserType(String userType) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => LoginScreen(userType: userType),
+        builder: (context) => LoginScreen(
+          userType: userType,
+          serviceType: widget.serviceType,
+        ),
       ),
     );
   }

@@ -4,44 +4,49 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../utils/constants.dart';
 import '../../utils/validation_utils.dart';
-import '../../services/firebase_auth_service.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
-import 'register_screen.dart';
-import 'forgot_password_screen.dart';
+import 'login_screen.dart';
+import '../home/dashboard_screen.dart';
 
-class LoginScreen extends StatefulWidget {
+class RegisterScreen extends StatefulWidget {
   final String userType;
   final String serviceType;
   
-  const LoginScreen({
+  const RegisterScreen({
     super.key,
     required this.userType,
     required this.serviceType,
   });
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> 
+class _RegisterScreenState extends State<RegisterScreen> 
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+  bool _agreeToTerms = false;
 
   @override
   void initState() {
     super.initState();
     
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
     
@@ -67,8 +72,11 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void dispose() {
     _animationController.dispose();
+    _nameController.dispose();
     _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -105,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen>
   IconData get _userTypeIcon {
     switch (widget.userType) {
       case AppConstants.userTypeCustomer:
-        return Icons.person;
+        return Icons.person_add;
       case AppConstants.userTypeCook:
         return Icons.restaurant_menu;
       case AppConstants.userTypeDelivery:
@@ -113,33 +121,62 @@ class _LoginScreenState extends State<LoginScreen>
       case AppConstants.userTypeAdmin:
         return Icons.admin_panel_settings;
       default:
-        return Icons.person;
+        return Icons.person_add;
     }
   }
 
-  Future<void> _login() async {
+  Future<void> _register() async {
     if (_formKey.currentState!.validate()) {
+      if (!_agreeToTerms) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Please agree to the Terms and Conditions',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: AppConstants.warningColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
       HapticFeedback.lightImpact();
       
-      final authService = Provider.of<FirebaseAuthService>(context, listen: false);
-      final success = await authService.login(
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final success = await authService.register(
+        name: _nameController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text,
-        expectedUserType: widget.userType, // Pass the expected user type
+        phone: ValidationUtils.formatPhoneNumber(_phoneController.text.trim()),
+        userType: widget.userType,
+        serviceType: widget.serviceType,
       );
 
       if (success && mounted) {
-        // Navigate to correct dashboard based on user type
-        final dashboardRoute = widget.userType == AppConstants.userTypeCook 
-            ? '/cook-dashboard' 
-            : '/customer-dashboard';
-        
-        Navigator.of(context).pushReplacementNamed(dashboardRoute);
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Account created successfully! Welcome to SwaadSeva!',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: AppConstants.successColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+        // Navigate to dashboard
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const DashboardScreen(),
+          ),
+        );
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              authService.errorMessage ?? 'Login failed',
+              authService.errorMessage ?? 'Registration failed',
               style: GoogleFonts.poppins(),
             ),
             backgroundColor: AppConstants.errorColor,
@@ -185,7 +222,7 @@ class _LoginScreenState extends State<LoginScreen>
                       children: [
                         // User Type Icon
                         Hero(
-                          tag: 'user_type_${widget.userType}',
+                          tag: 'user_type_register_${widget.userType}',
                           child: Container(
                             width: 80,
                             height: 80,
@@ -208,7 +245,7 @@ class _LoginScreenState extends State<LoginScreen>
                         const SizedBox(height: 24),
                         
                         Text(
-                          'Welcome Back!',
+                          'Create Account',
                           style: GoogleFonts.poppins(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
@@ -219,7 +256,7 @@ class _LoginScreenState extends State<LoginScreen>
                         const SizedBox(height: 8),
                         
                         Text(
-                          'Login as $_userTypeDisplayName',
+                          'Join as $_userTypeDisplayName',
                           style: GoogleFonts.poppins(
                             fontSize: 16,
                             color: AppConstants.textSecondary,
@@ -255,11 +292,26 @@ class _LoginScreenState extends State<LoginScreen>
                   
                   const SizedBox(height: 40),
                   
-                  // Login Form
+                  // Registration Form
                   Form(
                     key: _formKey,
                     child: Column(
                       children: [
+                        // Name Field
+                        CustomTextField(
+                          label: 'Full Name',
+                          hint: 'Enter your full name',
+                          controller: _nameController,
+                          validator: ValidationUtils.validateName,
+                          borderColor: _userTypeColor,
+                          prefixIcon: Icon(
+                            Icons.person_outline,
+                            color: _userTypeColor,
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 20),
+                        
                         // Email Field
                         CustomTextField(
                           label: 'Email Address',
@@ -276,18 +328,33 @@ class _LoginScreenState extends State<LoginScreen>
                         
                         const SizedBox(height: 20),
                         
+                        // Phone Field
+                        CustomTextField(
+                          label: 'Phone Number',
+                          hint: 'Enter your 10-digit phone number',
+                          controller: _phoneController,
+                          keyboardType: TextInputType.phone,
+                          validator: ValidationUtils.validatePhone,
+                          borderColor: _userTypeColor,
+                          maxLength: 10,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          prefixIcon: Icon(
+                            Icons.phone_outlined,
+                            color: _userTypeColor,
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 20),
+                        
                         // Password Field
                         CustomTextField(
                           label: 'Password',
-                          hint: 'Enter your password',
+                          hint: 'Create a strong password',
                           controller: _passwordController,
                           obscureText: _obscurePassword,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Password is required';
-                            }
-                            return null;
-                          },
+                          validator: ValidationUtils.validatePassword,
                           borderColor: _userTypeColor,
                           prefixIcon: Icon(
                             Icons.lock_outline,
@@ -308,44 +375,100 @@ class _LoginScreenState extends State<LoginScreen>
                           ),
                         ),
                         
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 20),
                         
-                        // Forgot Password
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
+                        // Confirm Password Field
+                        CustomTextField(
+                          label: 'Confirm Password',
+                          hint: 'Re-enter your password',
+                          controller: _confirmPasswordController,
+                          obscureText: _obscureConfirmPassword,
+                          validator: (value) => ValidationUtils.validateConfirmPassword(
+                            value, 
+                            _passwordController.text,
+                          ),
+                          borderColor: _userTypeColor,
+                          prefixIcon: Icon(
+                            Icons.lock_outline,
+                            color: _userTypeColor,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscureConfirmPassword 
+                                  ? Icons.visibility_off 
+                                  : Icons.visibility,
+                              color: _userTypeColor,
+                            ),
                             onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => ForgotPasswordScreen(
-                                    userType: widget.userType,
-                                    serviceType: widget.serviceType,
+                              setState(() {
+                                _obscureConfirmPassword = !_obscureConfirmPassword;
+                              });
+                            },
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 24),
+                        
+                        // Terms and Conditions
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Checkbox(
+                              value: _agreeToTerms,
+                              onChanged: (value) {
+                                setState(() {
+                                  _agreeToTerms = value ?? false;
+                                });
+                              },
+                              activeColor: _userTypeColor,
+                            ),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: RichText(
+                                  text: TextSpan(
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      color: AppConstants.textSecondary,
+                                    ),
+                                    children: [
+                                      const TextSpan(text: 'I agree to the '),
+                                      TextSpan(
+                                        text: 'Terms and Conditions',
+                                        style: GoogleFonts.poppins(
+                                          color: _userTypeColor,
+                                          fontWeight: FontWeight.w600,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                      const TextSpan(text: ' and '),
+                                      TextSpan(
+                                        text: 'Privacy Policy',
+                                        style: GoogleFonts.poppins(
+                                          color: _userTypeColor,
+                                          fontWeight: FontWeight.w600,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              );
-                            },
-                            child: Text(
-                              'Forgot Password?',
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: _userTypeColor,
                               ),
                             ),
-                          ),
+                          ],
                         ),
                         
                         const SizedBox(height: 32),
                         
-                        // Login Button
-                        Consumer<FirebaseAuthService>(
+                        // Register Button
+                        Consumer<AuthService>(
                           builder: (context, authService, child) {
                             return CustomButton(
-                              text: 'Login',
-                              onPressed: _login,
+                              text: 'Create Account',
+                              onPressed: _register,
                               isLoading: authService.isLoading,
                               color: _userTypeColor,
-                              icon: Icons.login,
+                              icon: Icons.person_add,
                             );
                           },
                         ),
@@ -381,13 +504,13 @@ class _LoginScreenState extends State<LoginScreen>
                         
                         const SizedBox(height: 24),
                         
-                        // Register Button
+                        // Login Button
                         CustomButton(
-                          text: 'Create New Account',
+                          text: 'Already Have Account? Login',
                           onPressed: () {
-                            Navigator.of(context).push(
+                            Navigator.of(context).pushReplacement(
                               MaterialPageRoute(
-                                builder: (context) => RegisterScreen(
+                                builder: (context) => LoginScreen(
                                   userType: widget.userType,
                                   serviceType: widget.serviceType,
                                 ),
@@ -396,7 +519,7 @@ class _LoginScreenState extends State<LoginScreen>
                           },
                           isOutlined: true,
                           color: _userTypeColor,
-                          icon: Icons.person_add,
+                          icon: Icons.login,
                         ),
                       ],
                     ),
@@ -407,7 +530,7 @@ class _LoginScreenState extends State<LoginScreen>
                   // Footer
                   Center(
                     child: Text(
-                      'Demo: Use any email and password (min 6 chars)',
+                      'Demo: Registration will create a test account',
                       style: GoogleFonts.poppins(
                         fontSize: 12,
                         color: AppConstants.textSecondary,

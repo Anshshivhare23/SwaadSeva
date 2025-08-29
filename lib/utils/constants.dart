@@ -75,6 +75,16 @@ class AppStrings {
   static const String deliveryBoy = 'Delivery Partner';
   static const String admin = 'Admin';
   
+  // Service Types
+  static const String tiffinDelivery = 'HOME-COOKED TIFFIN DELIVERY';
+  static const String cookOnCall = 'COOK-ON-CALL';
+  static const String tiffinService = 'Tiffin Service';
+  static const String cookService = 'Cook Service';
+  
+  // Service Descriptions
+  static const String tiffinDescription = 'Order delicious homemade tiffins delivered to your doorstep';
+  static const String cookDescription = 'Book a cook to prepare fresh meals at your location';
+  
   // Food Related
   static const String availableNow = 'Available Now';
   static const String orderNow = 'Order Now';

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "77644543435",
+    "project_id": "swaadseva-ce84e",
+    "storage_bucket": "swaadseva-ce84e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:77644543435:android:12dba8cdc1d924fe04f24e",
+        "android_client_info": {
+          "package_name": "com.swaadseva.swaad_seva"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCmXTetOaiTieujzJcU8ZB02BNKoQxrtcQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
