@@ -164,7 +164,7 @@ class DashboardScreen extends StatelessWidget {
                           'My Listings',
                           Icons.restaurant_menu,
                           AppConstants.secondaryColor,
-                          () {},
+                          () => Navigator.of(context).pushNamed('/my-listings'),
                         ),
                       ),
                     ],

@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/constants.dart';
 import '../../models/food_listing_model.dart';
 import '../../services/food_service.dart';
+import '../../services/image_service.dart';
 
 class FoodDiscoveryScreen extends StatefulWidget {
   const FoodDiscoveryScreen({super.key});
@@ -15,6 +16,7 @@ class FoodDiscoveryScreen extends StatefulWidget {
 class _FoodDiscoveryScreenState extends State<FoodDiscoveryScreen>
     with TickerProviderStateMixin {
   final FoodService _foodService = FoodService();
+  final ImageService _imageService = ImageService();
   final TextEditingController _searchController = TextEditingController();
   
   late AnimationController _animationController;
@@ -444,36 +446,85 @@ class _FoodDiscoveryScreenState extends State<FoodDiscoveryScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ...availableItems.take(2).map((item) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+        ...availableItems.take(3).map((item) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
           child: Row(
             children: [
+              // Food item image
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: AppConstants.surfaceColor,
+                ),
+                child: item.imageUrl != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: _imageService.getImageFromBase64(
+                          item.imageUrl!,
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : Icon(
+                        Icons.restaurant,
+                        color: AppConstants.textSecondary,
+                        size: 24,
+                      ),
+              ),
+              const SizedBox(width: 12),
+              // Food item details
               Expanded(
-                child: Text(
-                  item.name,
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.w500,
-                    color: AppConstants.textPrimary,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.name,
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w500,
+                        color: AppConstants.textPrimary,
+                        fontSize: 14,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (item.description.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        item.description,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: AppConstants.textSecondary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
                 ),
               ),
+              // Price
               Text(
                 '₹${item.price.toStringAsFixed(0)}',
                 style: GoogleFonts.poppins(
                   fontWeight: FontWeight.w600,
                   color: AppConstants.primaryColor,
+                  fontSize: 16,
                 ),
               ),
             ],
           ),
         )),
-        if (availableItems.length > 2)
-          Text(
-            '+${availableItems.length - 2} more items',
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              color: AppConstants.textSecondary,
-              fontStyle: FontStyle.italic,
+        if (availableItems.length > 3)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              '+${availableItems.length - 3} more items available',
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: AppConstants.textSecondary,
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ),
       ],

@@ -52,20 +52,30 @@ class ImageService {
       // Read image bytes
       final Uint8List imageBytes = await imageFile.readAsBytes();
       
+      // Check file size before processing
+      if (imageBytes.length > 5 * 1024 * 1024) { // 5MB limit
+        throw Exception('Image too large. Please select an image smaller than 5MB.');
+      }
+      
       // Decode and resize image to reduce size
       img.Image? image = img.decodeImage(imageBytes);
       if (image == null) {
         throw Exception('Failed to decode image');
       }
       
-      // Resize image to max 400x400 to keep base64 size manageable
-      img.Image resizedImage = img.copyResize(image, width: 400, height: 400);
+      // Resize image to max 300x300 to keep base64 size manageable
+      img.Image resizedImage = img.copyResize(image, width: 300, height: 300);
       
       // Encode as JPEG with compression
-      final List<int> compressedBytes = img.encodeJpg(resizedImage, quality: 85);
+      final List<int> compressedBytes = img.encodeJpg(resizedImage, quality: 60);
       
       // Convert to base64
       final String base64String = base64Encode(compressedBytes);
+      
+      // Check base64 size (Firestore document limit is ~1MB)
+      if (base64String.length > 800000) { // ~800KB limit for safety
+        throw Exception('Processed image still too large. Please select a different image.');
+      }
       
       // Add data URL prefix for web compatibility
       return 'data:image/jpeg;base64,$base64String';

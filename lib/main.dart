@@ -8,6 +8,7 @@ import 'screens/service_selection_screen.dart';
 import 'screens/auth/user_type_selection_screen.dart';
 import 'screens/home/dashboard_screen.dart';
 import 'screens/cook/create_food_listing_screen.dart';
+import 'screens/cook/my_listings_screen.dart';
 import 'screens/customer/food_discovery_screen.dart';
 import 'screens/customer/food_detail_screen.dart';
 import 'services/firebase_auth_service.dart';
@@ -44,6 +45,7 @@ class SwaadSevaApp extends StatelessWidget {
         '/cook-dashboard': (context) => const DashboardScreen(),
         '/customer-dashboard': (context) => const DashboardScreen(),
         '/create-food-listing': (context) => const CreateFoodListingScreen(),
+        '/my-listings': (context) => const MyListingsScreen(),
         '/food-discovery': (context) => const FoodDiscoveryScreen(),
       },
       onGenerateRoute: (settings) {
