@@ -1,4 +1,4 @@
-# SwaadSeva - Ghar ka Khana, Sirf Ek Click Mein! 🍛
+# SwaadSeva - Ghar Ka Khana, Sabko hai khilana! 🍛
 
 SwaadSeva is a revolutionary food delivery app that offers **TWO AMAZING SERVICES** connecting home cooks with food lovers, bringing the authentic taste of homemade meals to your doorstep or location.
 
